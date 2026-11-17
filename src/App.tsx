@@ -56,12 +56,12 @@ const copy = {
     safe:"Nothing is uploaded or published without your confirmation.",
     live:"Live clipper", liveTitle:"Clip authorized Twitch channels live",
     liveSub:"Detect chat reaction peaks while the stream is running and save local clip drafts.",
-    liveChannels:"Authorized Twitch channels (comma-separated)",
+    liveChannels:"Authorized Twitch channels (comma-separated, max 3)",
     liveRights:"I have permission to capture and create clips from these channels.",
     saveAllowlist:"Save authorized channels", startCapture:"Start live capture",
     startChatOnly:"Test chat only (5 min)", stopCapture:"Stop capture",
     liveHint:"Channels are stored in your local allowlist. Discovery does not grant reuse rights. Nothing is uploaded.",
-    liveVertical:"Also render a 9:16 vertical draft (uses more CPU).",
+    liveVertical:"Also render a 9:16 vertical draft (uses more CPU).", liveMaxChannels:"Start with 1–3 channels; the initial desktop workflow is capped at three.",
     liveRunning:"Live task running", liveStopped:"Live task stopped",
   },
   es: {
@@ -105,12 +105,12 @@ const copy = {
     safe:"Nada se sube ni se publica sin tu confirmación.",
     live:"Clipper en directo", liveTitle:"Crea clips de canales autorizados en directo",
     liveSub:"Detecta picos de reacción del chat mientras el directo sigue activo y guarda borradores locales.",
-    liveChannels:"Canales de Twitch autorizados (separados por comas)",
+    liveChannels:"Canales de Twitch autorizados (separados por comas, máximo 3)",
     liveRights:"Tengo permiso para capturar y crear clips de estos canales.",
     saveAllowlist:"Guardar canales autorizados", startCapture:"Iniciar captura en directo",
     startChatOnly:"Probar solo el chat (5 min)", stopCapture:"Detener captura",
     liveHint:"Los canales se guardan en tu lista local. Descubrir un canal no concede derechos de reutilización. No se sube nada.",
-    liveVertical:"Generar también un borrador vertical 9:16 (consume más CPU).",
+    liveVertical:"Generar también un borrador vertical 9:16 (consume más CPU).", liveMaxChannels:"Empieza con 1–3 canales; el flujo inicial de escritorio está limitado a tres.",
     liveRunning:"Tarea en directo activa", liveStopped:"Tarea en directo detenida",
   },
 } as const;
@@ -385,6 +385,7 @@ export default function App() {
               <span>{t("liveVertical")}</span>
             </label>
             <div className="notice-card"><ShieldCheck size={18}/><span>{t("liveHint")}</span></div>
+            <p className="field-hint">{t("liveMaxChannels")}</p>
             <button className="btn btn-outline full-btn" disabled={!liveRights || busy || !!liveTaskId} onClick={saveLiveAllowlist}>{t("saveAllowlist")}</button>
             <div className="two-col">
               <button className="btn btn-outline" disabled={!liveRights || busy || !!liveTaskId || !liveChannels.trim()} onClick={()=>startLiveCapture(true)}>{t("startChatOnly")}</button>

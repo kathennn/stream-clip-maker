@@ -250,6 +250,9 @@ fn normalize_live_channels(channels: Vec<String>) -> Result<Vec<String>, String>
             normalized.push(channel);
         }
     }
+    if normalized.len() > 3 {
+        return Err("The initial desktop clipper supports up to 3 channels.".into());
+    }
     Ok(normalized)
 }
 
@@ -580,5 +583,12 @@ mod live_channel_tests {
         assert!(normalize_live_channels(vec!["../other".into()]).is_err());
         assert!(normalize_live_channels(vec!["name with spaces".into()]).is_err());
         assert!(normalize_live_channels(vec!["a".repeat(26)]).is_err());
+        assert!(normalize_live_channels(vec![
+            "one".into(),
+            "two".into(),
+            "three".into(),
+            "four".into(),
+        ])
+        .is_err());
     }
 }

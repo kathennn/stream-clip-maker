@@ -97,6 +97,18 @@ stream-clip-maker directo.live_chat.json --url "<URL_YOUTUBE>" --vertical --run 
 stream-clip-maker chat.json --video grabacion.mp4 --vertical --run --out clips
 ```
 
+Para revisar el plan sin descargar ni renderizar vídeos, usa `--preview`. El plan queda en `moments.json`, incluso si también se indica `--run`:
+
+```bash
+stream-clip-maker chat.json --vod <ID_DEL_VOD> --preview --run --out clips
+```
+
+Después, `--select` permite renderizar solo los momentos elegidos (números de la lista, empezando por 1):
+
+```bash
+stream-clip-maker chat.json --vod <ID_DEL_VOD> --select 1,3 --vertical --run --out clips
+```
+
 Todas las opciones:
 
 ```bash

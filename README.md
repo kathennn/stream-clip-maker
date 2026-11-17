@@ -143,10 +143,16 @@ stream-clip-maker stream.live_chat.json --url "<YOUTUBE_URL>" --vertical
 
 ### 4. Render your clips
 
-Add `--run` to execute the generated FFmpeg commands:
+Preview the plan first. This writes `moments.json` but never starts a downloader or renderer, even if `--run` is also present:
 
 ```bash
-stream-clip-maker chat.json --vod <VOD_ID> --vertical --run --out clips
+stream-clip-maker chat.json --vod <VOD_ID> --preview --run --out clips
+```
+
+After reviewing the moments, select which numbered candidates to render with `--select`:
+
+```bash
+stream-clip-maker chat.json --vod <VOD_ID> --vertical --select 1,3 --run --out clips
 ```
 
 You can also render from a local video:

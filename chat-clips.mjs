@@ -32,6 +32,8 @@ Options:
   --video <file>   local recording -> ffmpeg commands
   --vertical       add a 9:16 pass (blurred background) to each clip
   --out <dir>      output folder for clips and moments.json (default clips)
+  --preview        write the plan without starting download or render tools
+  --select <n,...> render only selected 1-based moment numbers (for example 1,3)
   --run            execute the generated commands
 `;
 
@@ -48,7 +50,7 @@ const REACTION = new RegExp(
 
 function parseArgs(argv) {
   const opts = { window: 10, lead: 20, tail: 15, max: 90, skip: 180, top: 10, baseline: 300, ratio: 2.5, min: 5, out: "clips" };
-  const flags = new Set(["simple", "run", "vertical", "help"]);
+  const flags = new Set(["simple", "run", "vertical", "preview", "help"]);
   let file = null;
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -57,7 +59,7 @@ function parseArgs(argv) {
     if (flags.has(key)) { opts[key] = true; continue; }
     const val = argv[++i];
     if (val === undefined) throw new Error(`missing value for ${a}`);
-    opts[key] = ["vod", "url", "video", "out"].includes(key) ? val : Number(val);
+    opts[key] = ["vod", "url", "video", "out", "select"].includes(key) ? val : Number(val);
     if (Number.isNaN(opts[key])) throw new Error(`${a} needs a number`);
   }
   return { file, opts };
@@ -185,6 +187,7 @@ function pickMoments(wins, o) {
       peak: w.start,
       start,
       end: last.start + o.window + o.tail,
+      duration: last.start + o.window + o.tail - start,
       people: w.people.size,
       messages: w.msgs,
       reacting: w.reactors.size,
@@ -226,6 +229,15 @@ function commandsFor(m, k, o) {
 
 const quote = (a) => (/^[\w./:=@+-]+$/.test(a) ? a : `"${a.replaceAll('"', '\\"')}"`);
 
+function parseSelection(value, momentCount) {
+  if (value === undefined) return null;
+  const selected = value.split(",").map((part) => Number(part.trim()));
+  if (selected.some((index) => !Number.isInteger(index) || index < 1 || index > momentCount)) {
+    throw new Error(`--select needs moment numbers from 1 to ${momentCount}`);
+  }
+  return [...new Set(selected)];
+}
+
 function main() {
   const { file, opts } = parseArgs(process.argv.slice(2));
   if (!file || opts.help) { process.stdout.write(HELP); process.exit(opts.help ? 0 : 1); }
@@ -234,6 +246,8 @@ function main() {
 
   const wins = scoreWindows(msgs, opts);
   const moments = pickMoments(wins, opts);
+  const selection = parseSelection(opts.select, moments.length);
+  const selected = new Set(selection ?? moments.map((_, index) => index + 1));
   const dur = hms(wins.length * opts.window);
   console.log(`${msgs.length} messages · ${dur} of stream · ${moments.length} moments\n`);
 
@@ -243,15 +257,21 @@ function main() {
     console.log(`#${k + 1}  ${hms(m.start)} → ${hms(m.end)}   peak ${hms(m.peak)}   ` +
       `${m.people} people (${m.reacting} reacting) · x${m.ratio} vs normal${m.vote ? " · looks like a poll" : ""}`);
     console.log(`     chat: ${m.sample.join(" | ")}`);
+    if (!selected.has(k + 1)) {
+      console.log("     not selected for rendering\n");
+      return;
+    }
     const cmds = commandsFor(m, k, opts);
     cmds.forEach((c) => console.log(`     $ ${c.map(quote).join(" ")}`));
     all.push(...cmds);
     console.log();
   });
-  writeFileSync(join(opts.out, "moments.json"), JSON.stringify({ source: basename(file), options: opts, moments }, null, 2));
+  writeFileSync(join(opts.out, "moments.json"), JSON.stringify({ source: basename(file), options: opts, selected: [...selected], moments }, null, 2));
   console.log(`moments saved to ${join(opts.out, "moments.json")}`);
 
-  if (opts.run) {
+  if (opts.preview) {
+    console.log("Preview only: no downloads or rendering were started.");
+  } else if (opts.run) {
     if (!all.length) { console.error("--run needs --vod, --url or --video"); process.exit(1); }
     for (const [bin, ...args] of all) {
       console.log(`\n▶ ${bin} ${args.map(quote).join(" ")}`);

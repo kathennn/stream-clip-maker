@@ -1,0 +1,86 @@
+[
+  {
+    "peak": 900.9134932646994,
+    "start": 880.9134932646994,
+    "end": 925.9134932646994,
+    "duration": 45,
+    "people": 65,
+    "messages": 69,
+    "reacting": 56,
+    "vote": false,
+    "score": 177,
+    "baseline": 6,
+    "ratio": 29.5,
+    "sample": [
+      "KEKW",
+      "saludos desde mexico",
+      "💀💀💀",
+      "💀💀💀",
+      "XDDD",
+      "LMAO"
+    ]
+  },
+  {
+    "peak": 1800.9134932646994,
+    "start": 1780.9134932646994,
+    "end": 1825.9134932646994,
+    "duration": 45,
+    "people": 59,
+    "messages": 63,
+    "reacting": 53,
+    "vote": false,
+    "score": 165,
+    "baseline": 6,
+    "ratio": 27.5,
+    "sample": [
+      "LMAO",
+      "jugamos luego?",
+      "jajaja",
+      "NOOOO",
+      "XDDD",
+      "XDDD"
+    ]
+  },
+  {
+    "peak": 2400.9134932646994,
+    "start": 2380.9134932646994,
+    "end": 2425.9134932646994,
+    "duration": 45,
+    "people": 59,
+    "messages": 61,
+    "reacting": 0,
+    "vote": true,
+    "score": 23.6,
+    "baseline": 6,
+    "ratio": 3.9,
+    "sample": [
+      "100",
+      "100",
+      "100",
+      "100",
+      "100",
+      "100"
+    ]
+  },
+  {
+    "peak": 3000.9134932646994,
+    "start": 2980.9134932646994,
+    "end": 3025.9134932646994,
+    "duration": 45,
+    "people": 61,
+    "messages": 66,
+    "reacting": 56,
+    "vote": false,
+    "score": 173,
+    "baseline": 6,
+    "ratio": 28.8,
+    "sample": [
+      "KEKW",
+      "que tal",
+      "LMAO",
+      "jajaja",
+      "XDDD",
+      "NOOOO"
+    ]
+  }
+]

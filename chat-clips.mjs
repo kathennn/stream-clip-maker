@@ -8,9 +8,10 @@
 //   node chat-clips.mjs video.live_chat.json --url https://youtu.be/XXXX
 //   node chat-clips.mjs chat.json --video stream.mp4 --run --out clips
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, existsSync, realpathSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { join, basename } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const HELP = `stream-clip-maker <chat-file> [options]
 
@@ -119,35 +120,43 @@ const norm = (s) => s.toLowerCase().replace(/\d+/g, "#").replace(/(.)\1+/g, "$1"
 // bidi overrides before it is printed or saved.
 const clean = (s) => s.replace(/[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/g, "");
 
+// One window of chat. Shared by the batch scorer below and the live detector
+// (engine/peaks.mjs), so both score a window exactly the same way.
+function newWindow(i, start) {
+  return { i, start, msgs: 0, people: new Set(), reactors: new Set(), words: new Map(), sample: [] };
+}
+
+function addToWindow(w, m) {
+  w.msgs++;
+  w.people.add(m.user);
+  const reacting = REACTION.test(m.text);
+  if (reacting) w.reactors.add(m.user);
+  const key = norm(m.text);
+  if (key && !reacting) w.words.set(key, (w.words.get(key) || 0) + 1);
+  if (w.sample.length < 6 && m.text) w.sample.push(clean(m.text).slice(0, 40));
+}
+
+function scoreWindow(w, o) {
+  const people = w.people.size;
+  w.share = people ? w.reactors.size / people : 0;
+  // A window where one non-reaction message dominates is a poll or a
+  // copypasta ("100", "si"), not something happening on screen.
+  const top = Math.max(0, ...w.words.values());
+  w.vote = w.msgs >= 10 && top / w.msgs > 0.4;
+  w.score = o.simple ? w.msgs : people * (1 + 2 * w.share) * (w.vote ? 0.4 : 1);
+  return w;
+}
+
 function scoreWindows(msgs, o) {
   // Windows start at the first message, not at 0: a chat downloaded from the middle of a VOD
   // (TwitchDownloaderCLI -b/-e) must not count the hours before it as silence.
   let first = Infinity, last = -Infinity;
   for (const m of msgs) { if (m.t < first) first = m.t; if (m.t > last) last = m.t; }
   const n = Math.floor((last - first) / o.window) + 1;
-  const wins = Array.from({ length: n }, (_, i) => ({
-    i, start: first + i * o.window, msgs: 0, people: new Set(), reactors: new Set(), words: new Map(), sample: [],
-  }));
+  const wins = Array.from({ length: n }, (_, i) => newWindow(i, first + i * o.window));
   wins.first = first;
-  for (const m of msgs) {
-    const w = wins[Math.floor((m.t - first) / o.window)];
-    w.msgs++;
-    w.people.add(m.user);
-    const reacting = REACTION.test(m.text);
-    if (reacting) w.reactors.add(m.user);
-    const key = norm(m.text);
-    if (key && !reacting) w.words.set(key, (w.words.get(key) || 0) + 1);
-    if (w.sample.length < 6 && m.text) w.sample.push(clean(m.text).slice(0, 40));
-  }
-  for (const w of wins) {
-    const people = w.people.size;
-    w.share = people ? w.reactors.size / people : 0;
-    // A window where one non-reaction message dominates is a poll or a
-    // copypasta ("100", "si"), not something happening on screen.
-    const top = Math.max(0, ...w.words.values());
-    w.vote = w.msgs >= 10 && top / w.msgs > 0.4;
-    w.score = o.simple ? w.msgs : people * (1 + 2 * w.share) * (w.vote ? 0.4 : 1);
-  }
+  for (const m of msgs) addToWindow(wins[Math.floor((m.t - first) / o.window)], m);
+  for (const w of wins) scoreWindow(w, o);
   // Baseline: median of the previous few minutes, never below the median of
   // the whole stream (so the first minutes do not look like a spike).
   const back = Math.max(1, Math.round(o.baseline / o.window));
@@ -183,21 +192,25 @@ function pickMoments(wins, o) {
   return groups
     .sort((a, b) => b.best.excess - a.best.excess)
     .slice(0, o.top)
-    .map(({ start, last, best: w }) => ({
-      peak: w.start,
-      start,
-      end: last.start + o.window + o.tail,
-      duration: last.start + o.window + o.tail - start,
-      people: w.people.size,
-      messages: w.msgs,
-      reacting: w.reactors.size,
-      vote: w.vote,
-      score: +w.score.toFixed(1),
-      baseline: +w.base.toFixed(1),
-      ratio: +w.ratio.toFixed(1),
-      sample: w.sample,
-    }))
+    .map((g) => momentOf(g, o))
     .sort((a, b) => a.start - b.start);
+}
+
+function momentOf({ start, last, best: w }, o) {
+  return {
+    peak: w.start,
+    start,
+    end: last.start + o.window + o.tail,
+    duration: last.start + o.window + o.tail - start,
+    people: w.people.size,
+    messages: w.msgs,
+    reacting: w.reactors.size,
+    vote: w.vote,
+    score: +w.score.toFixed(1),
+    baseline: +w.base.toFixed(1),
+    ratio: +w.ratio.toFixed(1),
+    sample: w.sample,
+  };
 }
 
 const hms = (s) => {
@@ -285,4 +298,13 @@ function main() {
   }
 }
 
-try { main(); } catch (e) { console.error(`stream-clip-maker: ${e.message}`); process.exit(1); }
+export {
+  REACTION, VERTICAL, parseArgs, loadChat, fromTwitch, fromYouTube, median, norm, clean, hms,
+  newWindow, addToWindow, scoreWindow, scoreWindows, pickMoments, momentOf, commandsFor,
+};
+
+// Run only when executed directly, so tests and the live detector can import this file.
+const invokedAs = process.argv[1] ? realpathSync(process.argv[1]) : "";
+if (invokedAs === fileURLToPath(import.meta.url)) {
+  try { main(); } catch (e) { console.error(`stream-clip-maker: ${e.message}`); process.exit(1); }
+}

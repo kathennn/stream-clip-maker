@@ -54,7 +54,7 @@ The initial cut uses stream copy for speed, so its boundaries remain subject to 
 - Twitch IRC anonymous login is an undocumented community mechanism; Twitch EventSub remains the planned official transport option.
 - No OBS WebSocket capture path is implemented here.
 - No YouTube or Kick live-chat adapter is included.
-- No Tauri UI integration, clip editor, or automatic publishing is included.
+- The Tauri page currently provides allowlist, chat-only test, capture start/stop and optional 9:16 rendering; the full clip library/editor workflow is not included.
 - The 6 GB per-channel default is a safety cap, not a storage-management system.
 - Live network capture and real-stream timing still require end-to-end testing on channels that are explicitly authorized.
 
@@ -64,7 +64,7 @@ The initial cut uses stream copy for speed, so its boundaries remain subject to 
 The desktop build exposes a **Live clipper** page. Enter comma-separated Twitch channel logins, confirm that you have permission to capture them, and save the allowlist. The allowlist is stored in the app's local data directory in `rules.json`; the runner reads that file when it starts.
 
 - **Test chat only (5 min)** connects to chat and detects moments without recording video.
-- **Start live capture** starts Streamlink, FFmpeg and chat detection until stopped.
-- **Stop capture** requests a graceful shutdown, stops capture processes and lets queued clip jobs finish.
+- **Start live capture** starts Streamlink, FFmpeg and chat detection until stopped. You can optionally request a 9:16 vertical render.
+- **Stop capture** requests a graceful shutdown, stops capture processes and lets queued clip jobs finish. Closing the desktop window also requests task shutdown and waits for active tasks to finish.
 
-The desktop bundle includes the live runner and its local modules. Streamlink, FFmpeg and ffprobe still need to be installed and available on the system PATH. The app does not upload or publish live clips.
+The desktop bundle includes the Node.js runtime, live runner and its local modules. Streamlink, FFmpeg and ffprobe still need to be installed and available on the system PATH. The app does not upload or publish live clips.

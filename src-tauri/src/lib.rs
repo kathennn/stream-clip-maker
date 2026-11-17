@@ -16,6 +16,7 @@ use std::{
 use tauri::{AppHandle, Emitter, Manager};
 
 static NEXT_TASK: AtomicU64 = AtomicU64::new(1);
+static EXITING: AtomicBool = AtomicBool::new(false);
 
 struct TaskControl {
     stop: Arc<AtomicBool>,
@@ -510,10 +511,19 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .on_window_event(|window, event| {
-            if let tauri::WindowEvent::CloseRequested { api } = event {
-                let has_tasks = if let Ok(registry) = task_registry().lock() {
-                    for stop in registry.values() {
-                        stop.store(true, Ordering::Relaxed);
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                let has_tasks = if let Ok(mut registry) = task_registry().lock() {
+                    for control in registry.values_mut() {
+                        let mut requested = false;
+                        if let Some(stdin) = &control.stdin {
+                            if let Ok(mut pipe) = stdin.lock() {
+                                requested =
+                                    pipe.write_all(b"stop\n").is_ok() && pipe.flush().is_ok();
+                            }
+                        }
+                        if !requested {
+                            control.stop.store(true, Ordering::Relaxed);
+                        }
                     }
                     !registry.is_empty()
                 } else {

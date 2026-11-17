@@ -61,6 +61,7 @@ const copy = {
     saveAllowlist:"Save authorized channels", startCapture:"Start live capture",
     startChatOnly:"Test chat only (5 min)", stopCapture:"Stop capture",
     liveHint:"Channels are stored in your local allowlist. Discovery does not grant reuse rights. Nothing is uploaded.",
+    liveVertical:"Also render a 9:16 vertical draft (uses more CPU).",
     liveRunning:"Live task running", liveStopped:"Live task stopped",
   },
   es: {
@@ -109,6 +110,7 @@ const copy = {
     saveAllowlist:"Guardar canales autorizados", startCapture:"Iniciar captura en directo",
     startChatOnly:"Probar solo el chat (5 min)", stopCapture:"Detener captura",
     liveHint:"Los canales se guardan en tu lista local. Descubrir un canal no concede derechos de reutilización. No se sube nada.",
+    liveVertical:"Generar también un borrador vertical 9:16 (consume más CPU).",
     liveRunning:"Tarea en directo activa", liveStopped:"Tarea en directo detenida",
   },
 } as const;
@@ -151,6 +153,7 @@ export default function App() {
   const [notice,setNotice] = useState("");
   const [liveChannels,setLiveChannels] = useState("");
   const [liveRights,setLiveRights] = useState(false);
+  const [liveVertical,setLiveVertical] = useState(false);
   const [liveTaskId,setLiveTaskId] = useState<string | null>(null);
   const finishedTasks = useRef(new Set<string>());
   const [mobileOpen,setMobileOpen] = useState(false);
@@ -242,6 +245,7 @@ export default function App() {
       setLiveChannels(allowed.join(", "));
       const args = [...allowed];
       if (chatOnly) args.push("--chat-only", "--minutes", "5");
+      else if (liveVertical) args.push("--vertical");
       setBusy(true);
       const taskId = await invoke<string>("start_engine_task", { script:"live-clips.mjs", args });
       if (finishedTasks.current.has(taskId)) finishedTasks.current.delete(taskId);
@@ -375,6 +379,10 @@ export default function App() {
             <label className="check-line rights-check">
               <input type="checkbox" checked={liveRights} onChange={e=>setLiveRights(e.target.checked)}/>
               <span>{t("liveRights")}</span>
+            </label>
+            <label className="check-line">
+              <input type="checkbox" checked={liveVertical} onChange={e=>setLiveVertical(e.target.checked)}/>
+              <span>{t("liveVertical")}</span>
             </label>
             <div className="notice-card"><ShieldCheck size={18}/><span>{t("liveHint")}</span></div>
             <button className="btn btn-outline full-btn" disabled={!liveRights || busy || !!liveTaskId} onClick={saveLiveAllowlist}>{t("saveAllowlist")}</button>

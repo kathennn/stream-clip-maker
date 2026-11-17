@@ -1,10 +1,10 @@
 # Live clipping integration (experimental)
 
-This is the first local capture runner for the clipper workflow. It is not yet wired into the Tauri interface and does not implement the OBS streamer profile.
+This is the first experimental local capture runner for the clipper workflow. The desktop app now exposes a Live clipper page for its allowlist, chat-only test, capture start and graceful stop. The OBS streamer profile is not implemented yet.
 
 ## Requirements
 
-- Node.js 18 or newer
+- Node.js 18 or newer (the desktop release bundles Node.js; source/development runs use the installed Node executable)
 - Streamlink
 - FFmpeg and ffprobe from the same FFmpeg installation
 - A Twitch channel you have permission to capture and clip
@@ -57,3 +57,14 @@ The initial cut uses stream copy for speed, so its boundaries remain subject to 
 - No Tauri UI integration, clip editor, or automatic publishing is included.
 - The 6 GB per-channel default is a safety cap, not a storage-management system.
 - Live network capture and real-stream timing still require end-to-end testing on channels that are explicitly authorized.
+
+
+## Desktop app
+
+The desktop build exposes a **Live clipper** page. Enter comma-separated Twitch channel logins, confirm that you have permission to capture them, and save the allowlist. The allowlist is stored in the app's local data directory in `rules.json`; the runner reads that file when it starts.
+
+- **Test chat only (5 min)** connects to chat and detects moments without recording video.
+- **Start live capture** starts Streamlink, FFmpeg and chat detection until stopped.
+- **Stop capture** requests a graceful shutdown, stops capture processes and lets queued clip jobs finish.
+
+The desktop bundle includes the live runner and its local modules. Streamlink, FFmpeg and ffprobe still need to be installed and available on the system PATH. The app does not upload or publish live clips.

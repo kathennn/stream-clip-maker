@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -10,7 +10,7 @@ import {
   Upload, Video, X, Zap,
 } from "lucide-react";
 
-type Page = "home" | "discover" | "create" | "enhance" | "share" | "connections" | "settings" | "help";
+type Page = "home" | "discover" | "create" | "live" | "enhance" | "share" | "connections" | "settings" | "help";
 type Locale = "en" | "es";
 type LogLine = { taskId: string; stream: string; line: string };
 type TaskFinished = { taskId: string; success: boolean; code: number | null };
@@ -54,6 +54,14 @@ const copy = {
     processing:"Working…", done:"Finished", failed:"Something went wrong", select:"Select", cancel:"Cancel",
     noCredentials:"Twitch is not connected yet. Add your Client ID and Secret in Connections.",
     safe:"Nothing is uploaded or published without your confirmation.",
+    live:"Live clipper", liveTitle:"Clip authorized Twitch channels live",
+    liveSub:"Detect chat reaction peaks while the stream is running and save local clip drafts.",
+    liveChannels:"Authorized Twitch channels (comma-separated)",
+    liveRights:"I have permission to capture and create clips from these channels.",
+    saveAllowlist:"Save authorized channels", startCapture:"Start live capture",
+    startChatOnly:"Test chat only (5 min)", stopCapture:"Stop capture",
+    liveHint:"Channels are stored in your local allowlist. Discovery does not grant reuse rights. Nothing is uploaded.",
+    liveRunning:"Live task running", liveStopped:"Live task stopped",
   },
   es: {
     home:"Resumen", discover:"Descubrir", create:"Crear clips", enhance:"Mejorar", share:"Compartir",
@@ -94,12 +102,21 @@ const copy = {
     saved:"Guardado", processing:"Procesando…", done:"Terminado", failed:"Ha ocurrido un error", select:"Seleccionar",
     cancel:"Cancelar", noCredentials:"Twitch todavía no está conectado. Añade tu Client ID y Secret en Conexiones.",
     safe:"Nada se sube ni se publica sin tu confirmación.",
+    live:"Clipper en directo", liveTitle:"Crea clips de canales autorizados en directo",
+    liveSub:"Detecta picos de reacción del chat mientras el directo sigue activo y guarda borradores locales.",
+    liveChannels:"Canales de Twitch autorizados (separados por comas)",
+    liveRights:"Tengo permiso para capturar y crear clips de estos canales.",
+    saveAllowlist:"Guardar canales autorizados", startCapture:"Iniciar captura en directo",
+    startChatOnly:"Probar solo el chat (5 min)", stopCapture:"Detener captura",
+    liveHint:"Los canales se guardan en tu lista local. Descubrir un canal no concede derechos de reutilización. No se sube nada.",
+    liveRunning:"Tarea en directo activa", liveStopped:"Tarea en directo detenida",
   },
 } as const;
 
 const nav: { id: Page; icon: typeof Home; key: keyof typeof copy.en }[] = [
   { id:"home", icon:Home, key:"home" }, { id:"discover", icon:Search, key:"discover" },
-  { id:"create", icon:Clapperboard, key:"create" }, { id:"enhance", icon:Subtitles, key:"enhance" },
+  { id:"create", icon:Clapperboard, key:"create" }, { id:"live", icon:Activity, key:"live" },
+  { id:"enhance", icon:Subtitles, key:"enhance" },
   { id:"share", icon:Share2, key:"share" }, { id:"connections", icon:Globe2, key:"connections" },
   { id:"settings", icon:Settings, key:"settings" }, { id:"help", icon:CircleHelp, key:"help" },
 ];
@@ -132,6 +149,10 @@ export default function App() {
   const [logs,setLogs] = useState<string[]>([]);
   const [busy,setBusy] = useState(false);
   const [notice,setNotice] = useState("");
+  const [liveChannels,setLiveChannels] = useState("");
+  const [liveRights,setLiveRights] = useState(false);
+  const [liveTaskId,setLiveTaskId] = useState<string | null>(null);
+  const finishedTasks = useRef(new Set<string>());
   const [mobileOpen,setMobileOpen] = useState(false);
   const t = (key: keyof typeof copy.en) => copy[locale][key] || copy.en[key];
 
@@ -147,11 +168,19 @@ export default function App() {
       unlistenOutput = await listen<LogLine>("task-output",e => setLogs(old=>[...old.slice(-180),e.payload.line]));
       unlistenDone = await listen<TaskFinished>("task-finished",e => {
         setBusy(false);
+        finishedTasks.current.add(e.payload.taskId);
+        setLiveTaskId(current => {
+          if (current !== e.payload.taskId) return current;
+          finishedTasks.current.delete(e.payload.taskId);
+          return null;
+        });
         setNotice(e.payload.success ? t("done") : t("failed"));
         if (e.payload.success) { refreshDiscovery(); invoke<{twitchConnected:boolean;youtubeConnected:boolean}>("connection_status").then(v=>{setTwitchConnected(v.twitchConnected);setYoutubeConnected(v.youtubeConnected);}).catch(()=>{}); }
       });
       const status = await invoke<{twitchConnected:boolean;youtubeConnected:boolean}>("connection_status").catch(()=>null);
       if (status) { setTwitchConnected(status.twitchConnected); setYoutubeConnected(status.youtubeConnected); }
+      const allowed = await invoke<string[]>("read_live_allowlist").catch(()=>[]);
+      setLiveChannels(allowed.join(", "));
     })();
     return () => { unlistenOutput?.(); unlistenDone?.(); };
   },[]);
@@ -182,6 +211,52 @@ export default function App() {
       setBusy(false);
       setNotice(String(e));
     }
+  }
+
+  function selectedLiveChannels() {
+    return liveChannels.split(/[,\s]+/).map(channel => channel.trim().toLowerCase()).filter(Boolean);
+  }
+
+  async function saveLiveAllowlist() {
+    if (!isTauri()) { setNotice(t("desktopOnly")); return; }
+    if (!liveRights) { setNotice(t("liveRights")); return; }
+    try {
+      const channels = await invoke<string[]>("save_live_allowlist", {
+        channels: selectedLiveChannels(), rightsConfirmed: liveRights,
+      });
+      setLiveChannels(channels.join(", "));
+      setNotice(t("saved"));
+    } catch (e) { setNotice(String(e)); }
+  }
+
+  async function startLiveCapture(chatOnly: boolean) {
+    if (!isTauri()) { setNotice(t("desktopOnly")); return; }
+    if (!liveRights) { setNotice(t("liveRights")); return; }
+    const channels = selectedLiveChannels();
+    if (!channels.length) { setNotice(t("liveChannels")); return; }
+    if (busy || liveTaskId) return;
+    try {
+      const allowed = await invoke<string[]>("save_live_allowlist", {
+        channels, rightsConfirmed: liveRights,
+      });
+      setLiveChannels(allowed.join(", "));
+      const args = [...allowed];
+      if (chatOnly) args.push("--chat-only", "--minutes", "5");
+      setBusy(true);
+      const taskId = await invoke<string>("start_engine_task", { script:"live-clips.mjs", args });
+      if (finishedTasks.current.has(taskId)) finishedTasks.current.delete(taskId);
+      else setLiveTaskId(taskId);
+      setLogs(old => [...old, "> live-clips.mjs " + args.join(" ")]);
+      setNotice(t("liveRunning"));
+    } catch (e) { setBusy(false); setNotice(String(e)); }
+  }
+
+  async function stopLiveCapture() {
+    if (!liveTaskId || !isTauri()) return;
+    try {
+      await invoke("stop_engine_task", { taskId: liveTaskId });
+      setNotice(locale === "en" ? "Stopping live capture and finishing queued clips…" : "Deteniendo la captura y terminando los clips pendientes…");
+    } catch (e) { setNotice(String(e)); }
   }
 
   async function doSearch() {
@@ -291,6 +366,25 @@ export default function App() {
           <div className="panel search-panel"><label>{t("topic")}</label><div className="search-row"><input value={topic} onChange={e=>setTopic(e.target.value)} placeholder={t("searchPlaceholder")} onKeyDown={e=>e.key==="Enter"&&doSearch()}/><button className="btn btn-primary" onClick={doSearch} disabled={busy||!topic.trim()}><Search size={17}/>{t("search")}</button></div><p className="field-hint"><ShieldCheck size={14}/>{locale==="en"?"Search results are discovery only. Always confirm reuse permission with the creator.":"Los resultados son solo descubrimiento. Confirma siempre los permisos con el creador."}</p></div>
           <div className="section-head"><h2>{t("results")}</h2>{searchResults&&<span className="result-count">{searchResults.totalLiveMatches||0} live · {searchResults.totalVods||0} VODs</span>}</div>
           {!searchResults?<div className="empty-state"><div className="empty-icon"><Search size={25}/></div><strong>{t("noResults")}</strong><span>{locale==="en"?"Your search results will appear here.":"Los resultados aparecerán aquí."}</span></div>:<><div className="results-list">{(searchResults.streams||[]).slice(0,12).map((s:any)=><div className="result-row" key={s.streamId}><div className="live-thumb"><Video/></div><div className="result-info"><strong>{s.displayName}</strong><span>{s.title}</span><small>{s.category} · {s.language}</small></div><div className="result-viewers">{s.viewers?.toLocaleString()} <small>{locale==="en"?"viewers":"espectadores"}</small></div><span className={s.authorized?"permission-ok":"permission-no"}>{s.authorized?"Allowed":"Check rights"}</span></div>)}</div><div className="section-head"><h2>{locale==="en"?"Archived VODs":"VODs archivados"}</h2></div><div className="results-list">{(searchResults.vods||[]).slice(0,12).map((v:any)=><div className="result-row" key={v.vodId}><div className="live-thumb"><Play/></div><div className="result-info"><strong>{v.channel}</strong><span>{v.title}</span><small>{v.category} · {v.duration} · {v.language}</small></div><div className="result-viewers">{v.views?.toLocaleString()} <small>{locale==="en"?"views":"visualizaciones"}</small></div><span className={v.authorized?"permission-ok":"permission-no"}>{v.authorized?"Allowed":"Check rights"}</span></div>)}</div></>}
+        </section>}
+
+        {page==="live"&&<section className="page">
+          <PageHeading icon={<Activity/>} title={t("liveTitle")} subtitle={t("liveSub")}/>
+          <div className="panel form-panel narrow">
+            <Field label={t("liveChannels")} value={liveChannels} onChange={setLiveChannels} placeholder="channel_one, channel_two"/>
+            <label className="check-line rights-check">
+              <input type="checkbox" checked={liveRights} onChange={e=>setLiveRights(e.target.checked)}/>
+              <span>{t("liveRights")}</span>
+            </label>
+            <div className="notice-card"><ShieldCheck size={18}/><span>{t("liveHint")}</span></div>
+            <button className="btn btn-outline full-btn" disabled={!liveRights || busy || !!liveTaskId} onClick={saveLiveAllowlist}>{t("saveAllowlist")}</button>
+            <div className="two-col">
+              <button className="btn btn-outline" disabled={!liveRights || busy || !!liveTaskId || !liveChannels.trim()} onClick={()=>startLiveCapture(true)}>{t("startChatOnly")}</button>
+              <button className="btn btn-primary" disabled={!liveRights || busy || !!liveTaskId || !liveChannels.trim()} onClick={()=>startLiveCapture(false)}><Play size={16}/>{t("startCapture")}</button>
+            </div>
+            <button className="btn btn-outline full-btn" disabled={!liveTaskId} onClick={stopLiveCapture}><X size={16}/>{t("stopCapture")}</button>
+            {liveTaskId&&<div className="notice-card"><Activity size={18}/><span>{t("liveRunning")} · #{liveTaskId}</span></div>}
+          </div>
         </section>}
 
         {page==="create"&&<section className="page">

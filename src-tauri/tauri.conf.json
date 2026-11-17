@@ -40,7 +40,12 @@
       "../youtube-upload.mjs": "engine/youtube-upload.mjs",
       "../rules.json": "engine/rules.json",
       "resources/fontconfig/README.md": "fontconfig/README.md",
-      "resources/runtime/*": "runtime/"
+      "resources/runtime/*": "runtime/",
+      "../live-clips.mjs": "engine/live-clips.mjs",
+      "../engine/peaks.mjs": "engine/engine/peaks.mjs",
+      "../engine/live-config.mjs": "engine/engine/live-config.mjs",
+      "../engine/segment-timeline.mjs": "engine/engine/segment-timeline.mjs",
+      "../sources/twitch-irc.mjs": "engine/sources/twitch-irc.mjs"
     },
     "icon": [
       "icons/32x32.png",

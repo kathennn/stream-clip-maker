@@ -85,6 +85,8 @@ Install Node.js 18+, FFmpeg and the download tools needed by your workflow. The 
 
 The desktop app processes files locally. Install FFmpeg and whichever of yt-dlp / TwitchDownloaderCLI your workflow needs. See the [official download website](https://kathennn.github.io/stream-clip-maker/).
 
+**Experimental live clipper (development branch):** the in-progress v0.2.0 work adds a local Twitch clipper page with an explicit channel allowlist, chat-only testing and live capture. It is not part of the published v0.1.0 installers yet. See [live clipping integration and requirements](docs/live-clipping-integration.md).
+
 ## Interactive terminal interface
 
 Run Stream Clip Maker without arguments to open the guided TUI:

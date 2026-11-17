@@ -72,13 +72,52 @@ On a steady synthetic chat the live detector finds exactly the same moments as b
   non-reactions. Needs more data before changing.
 - Report latency: about 50 s after the peak (by design: `lead + tail` + one window).
 
-### Recording and cutting while live (Test A, 1 channel)
+### Recording and cutting while live (Test A: caseoh_, 1080p60, 25 min)
 
-_Pending: filled in from `lab/A` (clip accuracy, drift, latency, CPU/RAM/disk)._
+- 15 clips cut while the stream kept going, each with a 9:16 version.
+- Clip ready about **50 s after the peak** (cut with `-c copy` takes 0.1 s); the 9:16
+  re-encode adds 25–43 s using about 5 cores.
+- Alignment checked by transcribing clips locally with Whisper: the spider scare
+  ("that might be the worst thing I've ever seen") and the "is that goofy?" question both
+  land where the chat peak says.
+- **Quality is the problem, not timing: 9 of 15 were not highlights.** Chat answering a
+  question ("Yes", "YEA"), asking for things, or reacting to music. The 6 real ones had
+  20–35 % of people using a reaction; the 9 others had under 13 %. A minimum reaction share
+  (15–20 %) plus Twitch slang in `REACTION` ("W", "TUFF", "L", "LUL") looks like the fix;
+  to be validated on the raw chat now saved by the runner.
+- Resources: ~0 % CPU while only recording, 390 MB RAM, 7.9 Mbit/s, 3.3 GB/hour.
 
-### Several channels at once (Test B, 3 channels)
+### Several channels at once (Test B: 3 channels, 20 min)
 
-_Pending._
+First run exposed three runner bugs, all fixed in the second:
+
+1. `spawnSync` for ffmpeg blocked the event loop, so chat queued up: arrival lag p95
+   18–25 s, max 52 s. With async processes: p95 0.2 s.
+2. `ffprobe` duration of a growing `.ts` breaks on timestamp jumps (summit1g read 8.5 h
+   after 20 min), so cuts landed in the wrong place. The recording is now 6 s segments
+   named by the wall-clock second they opened (`ffmpeg -f segment -strftime 1`), and cuts
+   are by wall-clock time through the concat demuxer. Ads or jumps can only leave gaps.
+3. A stream that ended was not noticed. Now Streamlink's exit marks the channel offline and
+   recording restarts when the next stream begins.
+
+Second run (tfue, summit1g, gaules): 8 clips, 6 with real laughter; chat lag p95 0.2 s;
+22.6 Mbit/s, 440 MB RAM, average CPU 84 % (all from 9:16 re-encodes), about 3 GB/hour per
+channel at 1080p60. One channel (gaules) delivered no chat (rerun or restricted chat).
+Also added: `!commands` and known chat bots are ignored (tfue: 53 of 570 messages).
+
+**Capacity:** recording is nearly free; the limits are download bandwidth (~7.5 Mbit/s per
+1080p60 channel), disk (~3 GB/hour per channel) and the 9:16 encode queue. 720p60 halves
+bandwidth and disk. More than 3 channels: not measured yet.
+
+### How this compares with what exists
+
+Live clipping exists but is paid and slow: Opus Clip (private beta, chunks of 15–60 min),
+cut.pro (batches every 10 min), Klypra (chat-based, clips to Telegram). Twitch announced
+"Auto Clips" in May 2026 (waitlist). None of the four open-source clippers in our research
+(OpenShorts, SupoClip, Cutawan, Clips Kitty) detects moments during a live stream.
+Stream Clip Maker's edge: free and local, a clip ready ~50 s after the peak, a transparent
+reason per clip (ratio, people, reaction share) instead of an opaque virality score, and
+several channels at once.
 
 ## Streamer profile: OBS without GPL code
 

@@ -41,3 +41,6 @@ src-tauri/resources/runtime/node.exe
 /tools/archives/*.zip
 /workspace/*
 !/workspace/README.md
+
+# live-clips lab output (recordings and clips of third-party streams: never commit)
+lab/

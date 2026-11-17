@@ -30,6 +30,7 @@ export function createPeakDetector(options = {}, { onWindow, onMoment } = {}) {
   let group = null; // open moment
   const moments = [];
   let stats = { messages: 0, windows: 0, late: 0, lateDropped: 0 };
+  let flushed = false;
 
   const indexAt = (t) => Math.floor((t - origin) / o.window);
 
@@ -100,6 +101,7 @@ export function createPeakDetector(options = {}, { onWindow, onMoment } = {}) {
     options: o,
     moments,
     push(msg) {
+      if (flushed) return;
       if (!Number.isFinite(msg.t) || msg.t < origin) return;
       const i = indexAt(msg.t);
       if (cur && i < cur.i) { stats.late++; stats.lateDropped++; return; }
@@ -108,9 +110,12 @@ export function createPeakDetector(options = {}, { onWindow, onMoment } = {}) {
       stats.messages++;
     },
     tick(t) {
+      if (flushed) return;
       if (Number.isFinite(t) && t >= origin) advanceTo(indexAt(t));
     },
     flush() {
+      if (flushed) return moments;
+      flushed = true;
       if (cur) { close(cur); cur = null; }
       if (prev) consider(prev, prev2, null);
       if (group) { group.closedAt = prev ? prev.start + o.window : origin; emit(); }

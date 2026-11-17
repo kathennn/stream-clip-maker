@@ -44,6 +44,8 @@ Instala Node.js 18+, FFmpeg y las herramientas necesarias. El menú incluye Sear
 
 La aplicación procesa archivos localmente. Instala FFmpeg y yt-dlp o TwitchDownloaderCLI según tu flujo. Consulta la [web oficial de descargas](https://kathennn.github.io/stream-clip-maker/).
 
+**Clipper en directo experimental (rama de desarrollo):** el trabajo de v0.2.0 incorpora una página local para clippers de Twitch con lista explícita de canales autorizados, prueba solo de chat y captura en directo. Todavía no forma parte de los instaladores publicados de v0.1.0. Consulta la [guía de integración y requisitos](docs/live-clipping-integration.md).
+
 ## Interfaz interactiva (TUI)
 
 Ejecuta el programa sin argumentos para abrir el menú guiado:

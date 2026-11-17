@@ -82,7 +82,12 @@ function probeDuration(file) {
 }
 
 let rules;
-try { rules = JSON.parse(readFileSync(new URL("./rules.json", import.meta.url), "utf8")); }
+try {
+  const rulesPath = process.env.STREAM_CLIP_CONFIG_DIR
+    ? join(process.env.STREAM_CLIP_CONFIG_DIR, "rules.json")
+    : new URL("./rules.json", import.meta.url);
+  rules = JSON.parse(readFileSync(rulesPath, "utf8"));
+}
 catch (error) { console.error("cannot read rules.json: " + error.message); process.exit(1); }
 try { assertAllowedChannels(o.channels, rules.allowedCreators); }
 catch (error) { console.error(error.message); process.exit(1); }
@@ -274,6 +279,15 @@ async function stop(why) {
   }
   process.exit(0);
 }
+// The desktop host sends a line over stdin for a graceful, cross-platform stop request.
+let stopInput = "";
+process.stdin.setEncoding("utf8");
+process.stdin.on("data", (chunk) => {
+  stopInput += chunk;
+  const lines = stopInput.split(/\r?\n/);
+  stopInput = lines.pop() ?? "";
+  if (lines.some((line) => line.trim() === "stop")) stop("desktop request");
+});
 process.on("SIGINT", () => stop("SIGINT"));
 process.on("SIGTERM", () => stop("SIGTERM"));
 if (o.minutes > 0) setTimeout(() => stop(`${o.minutes} minutes`), o.minutes * 60000);

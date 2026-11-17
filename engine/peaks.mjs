@@ -29,7 +29,7 @@ export function createPeakDetector(options = {}, { onWindow, onMoment } = {}) {
   let prev2 = null; // the closed window before it
   let group = null; // open moment
   const moments = [];
-  let stats = { messages: 0, windows: 0, late: 0, lateDropped: 0 }; 
+  let stats = { messages: 0, windows: 0, late: 0, lateDropped: 0 };
 
   const indexAt = (t) => Math.floor((t - origin) / o.window);
 

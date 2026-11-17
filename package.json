@@ -14,6 +14,7 @@
   "files": [
     "cli.mjs",
     "chat-clips.mjs",
+    "sources/",
     "discover-twitch.mjs",
     "desktop-engine.mjs",
     "discover-twitch.sh",
@@ -37,7 +38,7 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview --host 0.0.0.0 --port 1420",
     "tauri": "tauri",
-    "check": "node --check chat-clips.mjs && node --check discover-twitch.mjs && node --check desktop-engine.mjs && node --check youtube-auth.mjs && node --check youtube-upload.mjs && node --check cli.mjs",
+    "check": "node --check chat-clips.mjs && node --check sources/twitch-irc.mjs && node --check discover-twitch.mjs && node --check desktop-engine.mjs && node --check youtube-auth.mjs && node --check youtube-upload.mjs && node --check cli.mjs",
     "test": "npm run check && node cli.mjs --help >/dev/null && node chat-clips.mjs --help >/dev/null && node --test"
   },
   "keywords": [

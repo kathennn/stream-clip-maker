@@ -9,11 +9,13 @@
     "node": ">=18"
   },
   "bin": {
-    "stream-clip-maker": "./cli.mjs"
+    "stream-clip-maker": "./cli.mjs",
+    "stream-clip-maker-live": "./live-clips.mjs"
   },
   "files": [
     "cli.mjs",
     "chat-clips.mjs",
+    "live-clips.mjs",
     "sources/",
     "engine/",
     "discover-twitch.mjs",
@@ -39,7 +41,7 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview --host 0.0.0.0 --port 1420",
     "tauri": "tauri",
-    "check": "node --check chat-clips.mjs && node --check engine/peaks.mjs && node --check sources/twitch-irc.mjs && node --check discover-twitch.mjs && node --check desktop-engine.mjs && node --check youtube-auth.mjs && node --check youtube-upload.mjs && node --check cli.mjs",
+    "check": "node --check chat-clips.mjs && node --check live-clips.mjs && node --check engine/live-config.mjs && node --check engine/segment-timeline.mjs && node --check engine/peaks.mjs && node --check sources/twitch-irc.mjs && node --check discover-twitch.mjs && node --check desktop-engine.mjs && node --check youtube-auth.mjs && node --check youtube-upload.mjs && node --check cli.mjs",
     "test": "npm run check && node cli.mjs --help >/dev/null && node chat-clips.mjs --help >/dev/null && node --test test/*.test.mjs tests/*.test.mjs"
   },
   "keywords": [

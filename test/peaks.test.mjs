@@ -87,3 +87,14 @@ test("messages arriving after their window closed are dropped, not misbucketed",
   assert.equal(state.late, 1);
   assert.equal(state.lateDropped, 1);
 });
+
+test("flush is idempotent and ignores messages received after finalization", () => {
+  const d = createPeakDetector(defaults);
+  for (const message of msgs) d.push(message);
+  const first = d.flush();
+  const count = d.snapshot().messages;
+  const second = d.flush();
+  d.push({ t: 9999, user: "late-after-stop", text: "JAJAJA" });
+  assert.deepEqual(second, first);
+  assert.equal(d.snapshot().messages, count);
+});

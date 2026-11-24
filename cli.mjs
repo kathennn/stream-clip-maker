@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { diagnose } from "./engine/doctor.mjs";
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -247,28 +248,20 @@ async function setupHelp() {
   await showGuide(topic);
 }
 
-async function checkTools() {
-  const checks = ["node", "ffmpeg", "ffprobe", "yt-dlp"];
-  const rows = checks.map((name) => {
-    const result = spawnSync("sh", ["-lc", "command -v " + name], { encoding: "utf8" });
-    return (result.status === 0 ? "✓ " : "– ") + name + (result.status === 0 ? "  " + result.stdout.trim() : "  not found (may be optional for your workflow)");
-  });
-  const tdcli = resolve(ROOT, "tools/TwitchDownloaderCLI-bin/TwitchDownloaderCLI");
-  const td = spawnSync("proot-distro", ["login", "debian", "--", tdcli, "--version"], { encoding: "utf8" });
-  const tdOutput = (td.stdout || "") + (td.stderr || "");
-  const tdAvailable = existsSync(tdcli) && tdOutput.includes("TwitchDownloaderCLI");
-  rows.push((tdAvailable ? "✓ " : "– ") + "TwitchDownloaderCLI" + (tdAvailable ? "  " + tdOutput.trim().split(/\r?\n/)[0] : "  unavailable through Debian PRoot"));
-  const whisper = resolve(ROOT, "tools/whisper.cpp/build/bin/whisper-cli");
-  const model = resolve(ROOT, "tools/whisper.cpp/models/ggml-base.bin");
-  rows.push((existsSync(whisper) ? "✓ " : "– ") + "Whisper.cpp" + (existsSync(whisper) ? "  CLI present" : "  CLI missing"));
-  rows.push((existsSync(model) ? "✓ " : "– ") + "Whisper base model" + (existsSync(model) ? "  present" : "  missing"));
-  note(rows.join("\n"), "Installed tools");
+function checkTools() {
+  note(diagnose(ROOT, []).lines.join("\n"), "Installed tools");
 }
 
 async function main() {
+  if (process.argv[2] === "doctor") {
+    const report = diagnose(ROOT, process.argv.slice(3));
+    console.log(report.lines.join("\n"));
+    process.exitCode = report.code;
+    return;
+  }
   if (process.argv.length > 2) {
     if (process.argv.includes("--help") || process.argv.includes("-h")) {
-      process.stdout.write("Interactive: stream-clip-maker\nAdvanced: stream-clip-maker <chat-file> [options]\n\n");
+      process.stdout.write("Interactive: stream-clip-maker\nDiagnostics: stream-clip-maker doctor [--render] [--youtube] [--twitch] [--captions]\nAdvanced: stream-clip-maker <chat-file> [options]\n\n");
       run(["--help"]);
       return;
     }

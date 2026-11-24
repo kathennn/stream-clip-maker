@@ -194,6 +194,15 @@ The `--vertical` option creates a **9:16** version with a blurred background. Au
 
 The core chat-analysis command has no third-party Node.js runtime dependencies. Downloading and rendering media requires the relevant external tools.
 
+Run `stream-clip-maker doctor` to check your installation. Add `--render` for
+local video, `--youtube` or `--twitch` for those downloads, and `--captions`
+for the Whisper subtitle workflow. Flags can be combined. Exit code 0 means the
+selected tools are available, 1 means a required check failed, and 2 means an
+unknown option. The command only probes local tools and checks that the model
+file is readable and non-empty. On Termux it tests TwitchDownloaderCLI inside
+Debian PRoot, as the supplied script does. On desktop it tests the native
+binary on PATH. Check that your release has its required runtime installed.
+
 ## Android / Termux extras
 
 The repository also includes optional scripts for the project's Android workflow:
